@@ -1,7 +1,7 @@
 /*
  * cvapp.cpp
  *
- *  Created on: 2022¦~11¤ë18¤é
+ *  Created on: 2022ï¿½~11ï¿½ï¿½18ï¿½ï¿½
  *      Author: 902452
  */
 
@@ -219,13 +219,13 @@ int cv_run() {
 		return -1;
 	}
 	else
-		xprintf("invoke pass\n");
+		// xprintf("invoke pass\n");
 
 	//retrieve output data
 	int8_t person_score = output->data.int8[1];
 	int8_t no_person_score = output->data.int8[0];
 
-	xprintf("person_score:%d\n",person_score);
+	// xprintf("person_score:%d\n",person_score);
 	//error_reporter->Report(
 	//	   "person score: %d, no person score: %d\n", person_score,
 	//	   no_person_score);

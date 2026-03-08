@@ -94,6 +94,11 @@ static uint8_t 	g_frame_ready;
 static uint32_t g_cur_jpegenc_frame;
 static uint8_t 	g_time;
 static uint8_t g_spi_master_initial_status;
+
+//profiling variables
+static uint32_t cpu_frequency_mhz;
+static uint32_t post_trigger_count;
+
 /*volatile*/ uint32_t jpeg_addr, jpeg_sz;
 
 void app_start_state(APP_STATE_E state);
@@ -122,7 +127,7 @@ static void dp_app_cv_eventhdl_cb(EVT_INDEX_E event)
 	int32_t read_status;
 	uint32_t chipid, version;
 
-	dbg_printf(DBG_LESS_INFO, "EVT event = %d\n", event);
+	// dbg_printf(DBG_LESS_INFO, "EVT event = %d\n", event);
 	g_dp_event = event;
 
 	switch(event)
@@ -182,6 +187,8 @@ static void dp_app_cv_eventhdl_cb(EVT_INDEX_E event)
 		g_cur_jpegenc_frame++;
     	g_frame_ready = 1;
 		dbg_printf(DBG_LESS_INFO, "SENSORDPLIB_STATUS_XDMA_FRAME_READY %d \n", g_cur_jpegenc_frame);
+
+		dbg_printf(DBG_LESS_INFO, "Time from trigger -> MIPI -> INP -> DEMOSAIC -> JPEG ENC -> WDMA2  %d microseconds\n", ((DWT->CYCCNT - post_trigger_count) / cpu_frequency_mhz));
 		break;
 
 	case EVT_INDEX_SENSOR_RTC_FIRE:
@@ -229,6 +236,7 @@ static void dp_app_cv_eventhdl_cb(EVT_INDEX_E event)
 		#if 1	// send JPG image
 		read_status = hx_drv_spi_mst_protocol_write_sp(jpeg_addr, jpeg_sz, DATA_TYPE_JPG);
 		dbg_printf(DBG_LESS_INFO, "write frame result %d, data size=%d,addr=0x%x\n", read_status, jpeg_sz, jpeg_addr);
+		dbg_printf(DBG_LESS_INFO, "Compression factor %d\n",(app_get_raw_sz()/jpeg_sz));
 		#else	// send YUV420 image
 		SPI_CMD_DATA_TYPE image_type;
 		uint32_t wdam3_addr = app_get_raw_addr();
@@ -258,6 +266,7 @@ static void dp_app_cv_eventhdl_cb(EVT_INDEX_E event)
 
 		//recapture image
 		sensordplib_retrigger_capture();
+		post_trigger_count = DWT->CYCCNT;
 	}
 
 	if(g_md_detect == 1)
@@ -307,6 +316,15 @@ void app_start_state(APP_STATE_E state)
  * @brief Main function
  */
 int app_main(void) {
+
+	// Enable DWT cycle counter                                                                                                                                                                                                                                      
+	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+	DWT->CYCCNT = 0;                        
+	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk; 
+
+	hx_drv_scu_get_freq(SCU_CLK_FREQ_TYPE_HSC_CM55M, &cpu_frequency_mhz);
+	cpu_frequency_mhz = cpu_frequency_mhz / 1000000;
+	dbg_printf(DBG_LESS_INFO, "CPU Frequency %d MHz\n", cpu_frequency_mhz);
 
 	uint32_t wakeup_event;
 	uint32_t wakeup_event1;
